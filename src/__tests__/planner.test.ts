@@ -112,6 +112,13 @@ describe('Timeline Metrics & Buffer Calculations', () => {
     const emptyPhase = filterTimelineMilestones(sampleMilestones, 'Wrap-up');
     expect(emptyPhase).toHaveLength(0);
   });
+
+  it('handles null or undefined milestone arrays safely', () => {
+    // @ts-expect-error Testing runtime resilience
+    expect(filterTimelineMilestones(null, 'Morning Prep')).toEqual([]);
+    // @ts-expect-error Testing runtime resilience
+    expect(filterTimelineMilestones(undefined, 'All')).toEqual([]);
+  });
 });
 
 describe('Vendor Metrics & Health Tracking', () => {
@@ -196,6 +203,13 @@ describe('Dietary Headcount Aggregation', () => {
     ];
     expect(aggregateDietaryCounts(guests)).toEqual({});
   });
+
+  it('handles null or undefined guest lists safely', () => {
+    // @ts-expect-error Testing runtime resilience
+    expect(aggregateDietaryCounts(null)).toEqual({});
+    // @ts-expect-error Testing runtime resilience
+    expect(aggregateDietaryCounts(undefined)).toEqual({});
+  });
 });
 
 describe('Calendar Countdown Calculation', () => {
@@ -260,6 +274,114 @@ describe('Input Validation', () => {
 
     expect(res.valid).toBe(false);
     expect(res.errors).toContain('Budget must be a realistic positive amount.');
+  });
+
+  it('enforces upper boundaries for guest count and budget', () => {
+    const atMaxBoundary = validatePlanInputs({
+      title: 'City Gala',
+      guestCount: 100000,
+      budget: 50000000,
+      eventType: 'Charity Gala',
+    });
+    expect(atMaxBoundary.valid).toBe(true);
+
+    const exceedGuestMax = validatePlanInputs({
+      title: 'Mega Event',
+      guestCount: 100001,
+      budget: 10000,
+    });
+    expect(exceedGuestMax.valid).toBe(false);
+    expect(exceedGuestMax.errors).toContain('Guest count must be between 1 and 100,000.');
+
+    const exceedBudgetMax = validatePlanInputs({
+      title: 'Mega Event',
+      guestCount: 100,
+      budget: 50000001,
+    });
+    expect(exceedBudgetMax.valid).toBe(false);
+    expect(exceedBudgetMax.errors).toContain('Budget must be a realistic positive amount.');
+  });
+
+  it('rejects whitespace-only titles and empty param objects safely', () => {
+    const whitespaceTitle = validatePlanInputs({
+      title: '     ',
+      guestCount: 50,
+      budget: 5000,
+    });
+    expect(whitespaceTitle.valid).toBe(false);
+    expect(whitespaceTitle.errors).toContain('Celebration title is required.');
+
+    const emptyParams = validatePlanInputs({});
+    expect(emptyParams.valid).toBe(false);
+    expect(emptyParams.errors).toHaveLength(3);
+  });
+});
+
+describe('Budget Fallbacks & Edge Cases', () => {
+  it('falls back to estimatedCost when actualCost is undefined', () => {
+    const items: BudgetItem[] = [
+      { id: 'b1', category: 'Decor', name: 'Centerpieces', estimatedCost: 650, paid: true },
+      { id: 'b2', category: 'Decor', name: 'Lighting', estimatedCost: 400, paid: false },
+    ];
+    const metrics = calculateBudgetMetrics(2000, [], items);
+    expect(metrics.totalActual).toBe(1050);
+    expect(metrics.totalPaid).toBe(650);
+    expect(metrics.unpaidInvoices).toBe(400);
+    expect(metrics.remainingBudget).toBe(950);
+  });
+});
+
+describe('Timeline Completion & Buffer Edge Cases', () => {
+  it('correctly handles 100% and 0% single-milestone completions', () => {
+    const singleCompleted: TimelineMilestone[] = [
+      { id: 'm1', time: '12:00 PM', phase: 'Arrival & Welcome', title: 'Start', description: '', responsibleParty: '', bufferMinutes: 10, completed: true },
+    ];
+    const singlePending: TimelineMilestone[] = [
+      { id: 'm2', time: '12:00 PM', phase: 'Arrival & Welcome', title: 'Start', description: '', responsibleParty: '', bufferMinutes: 0, completed: false },
+    ];
+
+    expect(calculateTimelineMetrics(singleCompleted).percentComplete).toBe(100);
+    expect(calculateTimelineMetrics(singlePending).percentComplete).toBe(0);
+  });
+});
+
+describe('Vendor Metrics Edge Cases & Quote Fallbacks', () => {
+  it('accurately uses targetBudget when actualQuote is null or missing', () => {
+    const vendors: VendorItem[] = [
+      {
+        id: 'v1',
+        category: 'DJ',
+        targetBudget: 1200,
+        bookingTimeline: '1 month',
+        keyRequirements: '',
+        topQuestionsToAsk: [],
+        status: 'Booked',
+      },
+      {
+        id: 'v2',
+        category: 'Photographer',
+        targetBudget: 2500,
+        actualQuote: 2800,
+        bookingTimeline: '2 months',
+        keyRequirements: '',
+        topQuestionsToAsk: [],
+        status: 'Deposit Paid',
+      },
+    ];
+
+    const metrics = calculateVendorMetrics(vendors);
+    expect(metrics.totalCommittedQuotes).toBe(4000); // 1200 fallback + 2800 actual
+    expect(metrics.bookedCount).toBe(2);
+  });
+});
+
+describe('Calendar Countdown Edge Cases', () => {
+  it('handles empty date string and month boundary differences correctly', () => {
+    expect(calculateCountdownDays('')).toBe(0);
+
+    const may30 = new Date('2026-05-30T10:00:00Z');
+    const june2 = '2026-06-02';
+    expect(calculateCountdownDays(june2, may30)).toBe(3);
   });
 });
 

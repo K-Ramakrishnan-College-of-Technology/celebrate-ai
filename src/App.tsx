@@ -28,7 +28,7 @@ export default function App() {
           return parsed;
         }
       }
-    } catch (e) {
+    } catch (e: unknown) {
       console.error('Failed to read from localStorage:', e);
     }
     return DEFAULT_EVENTS;
@@ -47,7 +47,7 @@ export default function App() {
     const handler = setTimeout(() => {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
-      } catch (e) {
+      } catch (e: unknown) {
         console.error('Failed to save events to localStorage:', e);
       }
     }, 250);

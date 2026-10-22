@@ -33,7 +33,7 @@ export interface BudgetItem {
   category: string;
   name: string;
   estimatedCost: number;
-  actualCost: number;
+  actualCost?: number;
   paid: boolean;
   notes?: string;
   dueDate?: string;

@@ -1,4 +1,5 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
+import type { Request, Response } from 'express';
 import { GoogleGenAI } from '@google/genai';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -37,8 +38,15 @@ app.get('/api/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Helper: Sanitize string
-function sanitizeString(str: any, maxLen = 500): string {
+// Helper: Extract safe error message without using any
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  return 'Unknown error occurred';
+}
+
+// Helper: Sanitize string safely
+function sanitizeString(str: unknown, maxLen = 500): string {
   if (typeof str !== 'string') return '';
   return str.trim().slice(0, maxLen);
 }
@@ -131,8 +139,8 @@ Provide a structured JSON output with:
     const parsedData = JSON.parse(cleaned);
 
     return res.json(parsedData);
-  } catch (error: any) {
-    console.error('Error generating celebration plan:', error);
+  } catch (error: unknown) {
+    console.error('Error generating celebration plan:', getErrorMessage(error));
     return res.status(500).json({
       error: 'Failed to synthesize celebration plan with AI. Please check inputs and try again.',
     });
@@ -182,8 +190,8 @@ Draft a complete, polite message including:
     });
 
     return res.json({ rfpMessage: response.text });
-  } catch (error: any) {
-    console.error('Error drafting vendor RFP:', error);
+  } catch (error: unknown) {
+    console.error('Error drafting vendor RFP:', getErrorMessage(error));
     return res.status(500).json({ error: 'Failed to generate RFP message.' });
   }
 });
@@ -223,8 +231,8 @@ Provide JSON response with:
 
     const parsed = JSON.parse(response.text?.trim() || '{}');
     return res.json(parsed);
-  } catch (error: any) {
-    console.error('Error optimizing budget:', error);
+  } catch (error: unknown) {
+    console.error('Error optimizing budget:', getErrorMessage(error));
     return res.status(500).json({ error: 'Failed to optimize budget.' });
   }
 });
@@ -267,8 +275,8 @@ Output JSON with:
 
     const parsed = JSON.parse(response.text?.trim() || '{}');
     return res.json(parsed);
-  } catch (error: any) {
-    console.error('Error generating speech:', error);
+  } catch (error: unknown) {
+    console.error('Error generating speech:', getErrorMessage(error));
     return res.status(500).json({ error: 'Failed to generate speech.' });
   }
 });
@@ -307,21 +315,29 @@ Return JSON array of 5 objects, each with:
 
     const parsed = JSON.parse(response.text?.trim() || '[]');
     return res.json({ ideas: parsed });
-  } catch (error: any) {
-    console.error('Error brainstorming:', error);
+  } catch (error: unknown) {
+    console.error('Error brainstorming:', getErrorMessage(error));
     return res.status(500).json({ error: 'Failed to brainstorm ideas.' });
   }
 });
 
 // Setup Vite Dev Server Middleware or Static Production Serving
 async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
+  const fs = await import('fs');
+  const distHtmlPath = path.resolve(__dirname, 'dist', 'index.html');
+  const distExists = fs.existsSync(distHtmlPath);
+
+  if (process.env.NODE_ENV === 'production' && distExists) {
+    app.use(express.static(path.resolve(__dirname, 'dist')));
+    app.get('*', (_req: Request, res: Response) => {
+      res.sendFile(distHtmlPath);
+    });
+  } else {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
     });
-    const fs = await import('fs');
     app.use(vite.middlewares);
     app.use('*', async (req, res, next) => {
       const url = req.originalUrl;
@@ -329,15 +345,10 @@ async function startServer() {
         const rawTemplate = fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8');
         const template = await vite.transformIndexHtml(url, rawTemplate);
         res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
-      } catch (e: any) {
-        if (vite) vite.ssrFixStacktrace(e);
+      } catch (e: unknown) {
+        if (vite) vite.ssrFixStacktrace(e as Error);
         next(e);
       }
-    });
-  } else {
-    app.use(express.static(path.resolve(__dirname, 'dist')));
-    app.get('*', (_req: Request, res: Response) => {
-      res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
     });
   }
 

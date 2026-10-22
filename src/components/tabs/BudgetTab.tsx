@@ -212,7 +212,7 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ event, onUpdateEvent }) =>
           {event.budgetCategories.map((cat, idx) => {
             const actualForCat = event.budgetItems
               .filter((i) => i.category === cat.category)
-              .reduce((sum, i) => sum + i.actualCost, 0);
+              .reduce((sum, i) => sum + (i.actualCost ?? i.estimatedCost ?? 0), 0);
             const isCatOver = actualForCat > cat.targetAmount;
             return (
               <div
@@ -484,7 +484,8 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ event, onUpdateEvent }) =>
             </thead>
             <tbody className="divide-y divide-stone-100 font-mono">
               {filteredItems.map((item) => {
-                const variance = item.actualCost - item.estimatedCost;
+                const currentActual = item.actualCost ?? item.estimatedCost;
+                const variance = currentActual - item.estimatedCost;
                 return (
                   <tr key={item.id} className="hover:bg-stone-50/60 transition-colors">
                     <td className="py-2.5 px-3 font-sans font-medium text-stone-900">
@@ -497,7 +498,7 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ event, onUpdateEvent }) =>
                       ${item.estimatedCost.toLocaleString()}
                     </td>
                     <td className="py-2.5 px-3 text-right font-semibold text-stone-900 tabular-nums">
-                      ${item.actualCost.toLocaleString()}
+                      ${currentActual.toLocaleString()}
                     </td>
                     <td className="py-2.5 px-3 text-right tabular-nums">
                       {variance === 0 ? (
