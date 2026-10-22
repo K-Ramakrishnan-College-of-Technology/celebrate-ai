@@ -1,0 +1,6 @@
+{
+  "name": "Aura Celebrations - AI Event Planner",
+  "description": "GenAI-powered celebration and event planning assistant for weddings, birthdays, and community gatherings with budgets, timelines, vendor checklists, and custom ideas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
