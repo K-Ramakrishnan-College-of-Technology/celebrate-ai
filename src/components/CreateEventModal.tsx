@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CelebrationEvent, EventType } from '../types/planner';
 import { generateCelebrationPlan } from '../services/aiPlannerService';
+import { getErrorMessage } from '../utils/plannerCalculations';
 import { X, Sparkles, Loader2, Calendar, MapPin, Users, DollarSign, Wand2 } from 'lucide-react';
 
 interface CreateEventModalProps {
@@ -122,7 +123,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           signatureActivity: 'Curated memory wall & vinyl listening station.',
           atmosphereNotes: 'Warm incandescent lighting, botanical textures, and curated playlist.',
         },
-        budgetCategories: (generated.budgetCategories as any) || [
+        budgetCategories: generated.budgetCategories || [
           { category: 'Venue & Rentals', percentage: 35, targetAmount: Math.round(budget * 0.35), tips: 'Confirm table and chair inclusions.', essential: true },
           { category: 'Catering & Beverages', percentage: 35, targetAmount: Math.round(budget * 0.35), tips: 'Plan seasonal ingredients for best value.', essential: true },
           { category: 'Photography / Film', percentage: 15, targetAmount: Math.round(budget * 0.15), tips: 'Schedule key moments during daylight.', essential: true },
@@ -134,19 +135,19 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           { id: `bi-${Date.now()}-2`, category: 'Catering & Beverages', name: 'Guest Dining & Beverage Service', estimatedCost: Math.round(budget * 0.32), actualCost: 0, paid: false },
           { id: `bi-${Date.now()}-3`, category: 'Photography / Film', name: 'Documentary Photo Coverage', estimatedCost: Math.round(budget * 0.15), actualCost: 0, paid: false },
         ],
-        timeline: (generated.timeline as any) || [
+        timeline: generated.timeline || [
           { id: `t-${Date.now()}-1`, time: '02:00 PM', phase: 'Morning Prep', title: 'Setup & Vendor Arrival', description: 'Decorators and catering team load in.', responsibleParty: 'Host & Coordinator', bufferMinutes: 30, completed: false },
           { id: `t-${Date.now()}-2`, time: '04:00 PM', phase: 'Arrival & Welcome', title: 'Guest Arrival & Welcome Drink', description: 'Guests arrive; signature refreshments served.', responsibleParty: 'Hosts', bufferMinutes: 15, completed: false },
           { id: `t-${Date.now()}-3`, time: '05:30 PM', phase: 'Ceremony / Kickoff', title: 'Main Program & Welcome Toast', description: 'Kickoff speeches and official celebration moment.', responsibleParty: 'Master of Ceremonies', bufferMinutes: 10, completed: false },
           { id: `t-${Date.now()}-4`, time: '06:30 PM', phase: 'Dining & Toasts', title: 'Dinner & Conversation', description: 'Seasonal culinary feast with curated background soundtrack.', responsibleParty: 'Catering Lead', bufferMinutes: 20, completed: false },
           { id: `t-${Date.now()}-5`, time: '09:00 PM', phase: 'Send-Off', title: 'Dessert & Farewell Send-Off', description: 'Sweet treats and heartfelt goodbyes.', responsibleParty: 'Hosts', bufferMinutes: 15, completed: false },
         ],
-        vendors: ((generated as any).vendorChecklist || (generated as any).vendors) || [
+        vendors: generated.vendors || generated.vendorChecklist || [
           { id: `v-${Date.now()}-1`, category: 'Venue', status: 'Researching', targetBudget: Math.round(budget * 0.35), bookingTimeline: '6 months prior', keyRequirements: 'Capacity and curfew', topQuestionsToAsk: ['Are outside caterers allowed?'] },
           { id: `v-${Date.now()}-2`, category: 'Catering', status: 'Researching', targetBudget: Math.round(budget * 0.35), bookingTimeline: '4 months prior', keyRequirements: 'Tasting and staffing', topQuestionsToAsk: ['Do you handle plate rentals?'] },
           { id: `v-${Date.now()}-3`, category: 'Photographer', status: 'Researching', targetBudget: Math.round(budget * 0.15), bookingTimeline: '5 months prior', keyRequirements: 'Style and portfolio review', topQuestionsToAsk: ['What is the delivery timeline?'] },
         ],
-        ideas: ((generated as any).personalizedIdeas || (generated as any).ideas) || [
+        ideas: generated.ideas || generated.personalizedIdeas || [
           { id: `i-${Date.now()}-1`, category: 'Welcome Moment', title: 'Bespoke Welcome Refreshment', description: 'A tailored cocktail/mocktail greeting upon entry.', estimatedCost: '$80 - $150', diyFriendly: true, saved: true },
           { id: `i-${Date.now()}-2`, category: 'Atmosphere', title: 'Potted Herb Table Runners', description: 'Living rosemary and lavender in terracotta pots guests take home.', estimatedCost: '$120', diyFriendly: true, saved: true },
         ],
@@ -158,9 +159,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
       onEventCreated(newCelebration);
       onClose();
-    } catch (err: any) {
-      console.error(err);
-      setErrorMessage(err.message || 'Error communicating with AI engine. Please verify the prompt and try again.');
+    } catch (err: unknown) {
+      setErrorMessage(getErrorMessage(err));
     } finally {
       setIsGenerating(false);
     }

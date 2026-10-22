@@ -1,5 +1,18 @@
 export type EventType = 'Wedding' | 'Birthday' | 'Community' | 'Anniversary' | 'Gala' | 'Dinner Party';
 
+export type TimelinePhase =
+  | 'Morning Prep'
+  | 'Arrival & Welcome'
+  | 'Ceremony / Kickoff'
+  | 'Dining & Toasts'
+  | 'Celebration & Dancing'
+  | 'Send-Off'
+  | 'Wrap-up';
+
+export type VendorStatus = 'Researching' | 'Contacted' | 'Quote Received' | 'Booked' | 'Deposit Paid';
+
+export type RsvpStatus = 'Attending' | 'Declined' | 'Awaiting';
+
 export interface ColorSwatch {
   name: string;
   hex: string;
@@ -37,15 +50,13 @@ export interface BudgetCategory {
 export interface TimelineMilestone {
   id: string;
   time: string;
-  phase: 'Morning Prep' | 'Arrival & Welcome' | 'Ceremony / Kickoff' | 'Dining & Toasts' | 'Celebration & Dancing' | 'Send-Off' | 'Wrap-up';
+  phase: TimelinePhase;
   title: string;
   description: string;
   responsibleParty: string;
   bufferMinutes: number;
   completed: boolean;
 }
-
-export type VendorStatus = 'Researching' | 'Contacted' | 'Quote Received' | 'Booked' | 'Deposit Paid';
 
 export interface VendorItem {
   id: string;
@@ -75,11 +86,18 @@ export interface PersonalizedIdea {
   saved?: boolean;
 }
 
+export interface BrainstormIdea {
+  title: string;
+  description: string;
+  proTip: string;
+  costLevel: '$' | '$$' | '$$$';
+}
+
 export interface GuestItem {
   id: string;
   name: string;
   roleOrGroup: string;
-  rsvpStatus: 'Attending' | 'Declined' | 'Awaiting';
+  rsvpStatus: RsvpStatus;
   dietaryRestrictions: string;
   tableOrZone: string;
   plusOne: boolean;
@@ -104,4 +122,14 @@ export interface CelebrationEvent {
   ideas: PersonalizedIdea[];
   guests: GuestItem[];
   createdAt: string;
+}
+
+export interface GeneratedPlanResponse {
+  creativeVision?: CreativeVision;
+  budgetCategories?: BudgetCategory[];
+  timeline?: TimelineMilestone[];
+  vendors?: VendorItem[];
+  vendorChecklist?: VendorItem[];
+  ideas?: PersonalizedIdea[];
+  personalizedIdeas?: PersonalizedIdea[];
 }

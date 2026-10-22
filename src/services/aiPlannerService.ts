@@ -1,4 +1,4 @@
-import { CelebrationEvent, BudgetItem } from '../types/planner';
+import { CelebrationEvent, BudgetItem, GeneratedPlanResponse, BrainstormIdea } from '../types/planner';
 
 export interface GeneratePlanParams {
   eventType: string;
@@ -45,7 +45,7 @@ export interface BrainstormParams {
   guestCount: number;
 }
 
-export async function generateCelebrationPlan(params: GeneratePlanParams): Promise<Partial<CelebrationEvent>> {
+export async function generateCelebrationPlan(params: GeneratePlanParams): Promise<GeneratedPlanResponse> {
   const res = await fetch('/api/generate-plan', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -116,12 +116,7 @@ export async function generateSpeechWithAI(params: SpeechParams): Promise<{
 }
 
 export async function brainstormIdeasWithAI(params: BrainstormParams): Promise<{
-  ideas: Array<{
-    title: string;
-    description: string;
-    proTip: string;
-    costLevel: string;
-  }>;
+  ideas: BrainstormIdea[];
 }> {
   const res = await fetch('/api/brainstorm-ideas', {
     method: 'POST',

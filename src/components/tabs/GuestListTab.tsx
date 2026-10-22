@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { CelebrationEvent, GuestItem } from '../../types/planner';
+import React, { useState, useMemo, useCallback } from 'react';
+import { CelebrationEvent, GuestItem, RsvpStatus } from '../../types/planner';
 import { aggregateDietaryCounts } from '../../utils/plannerCalculations';
 import {
   Users,
@@ -367,7 +367,7 @@ export const GuestListTab: React.FC<GuestListTabProps> = ({ event, onUpdateEvent
                   <td className="py-2.5 px-3 text-center">
                     <select
                       value={guest.rsvpStatus}
-                      onChange={(e) => handleToggleRsvp(guest.id, e.target.value as any)}
+                      onChange={(e) => handleToggleRsvp(guest.id, e.target.value as RsvpStatus)}
                       className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border ${
                         guest.rsvpStatus === 'Attending'
                           ? 'bg-emerald-50 text-emerald-800 border-emerald-200'

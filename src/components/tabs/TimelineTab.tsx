@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { CelebrationEvent, TimelineMilestone } from '../../types/planner';
-import { calculateTimelineMetrics } from '../../utils/plannerCalculations';
+import React, { useState, useMemo, useCallback } from 'react';
+import { CelebrationEvent, TimelineMilestone, TimelinePhase } from '../../types/planner';
+import { calculateTimelineMetrics, getErrorMessage } from '../../utils/plannerCalculations';
 import {
   Clock,
   Plus,
@@ -120,15 +120,15 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
       });
       const data = await res.json();
       if (data.ideas && Array.isArray(data.ideas)) {
-        const lines = data.ideas
-          .map((i: any) => `• ${i.title}: ${i.description}`)
+        const lines = (data.ideas as { title: string; description: string }[])
+          .map((i) => `• ${i.title}: ${i.description}`)
           .join('\n\n');
         setAiAdvice(lines);
       } else {
         setAiAdvice('Your timeline flow looks balanced! Ensure catering staff is notified 20 minutes prior to speeches.');
       }
-    } catch (err: any) {
-      setAiAdvice(`Timeline review: ${err.message || 'Error running analysis'}`);
+    } catch (err: unknown) {
+      setAiAdvice(`Timeline review: ${getErrorMessage(err)}`);
     } finally {
       setIsAiOptimizing(false);
     }
@@ -258,7 +258,7 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
               </label>
               <select
                 value={newPhase}
-                onChange={(e) => setNewPhase(e.target.value as any)}
+                onChange={(e) => setNewPhase(e.target.value as TimelinePhase)}
                 className="w-full px-3 py-2 text-xs border border-stone-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-stone-900"
               >
                 {phases.filter((p) => p !== 'All').map((p) => (

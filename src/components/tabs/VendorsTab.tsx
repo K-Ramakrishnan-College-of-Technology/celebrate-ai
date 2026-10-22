@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { CelebrationEvent, VendorItem, VendorStatus } from '../../types/planner';
 import { generateVendorRfp } from '../../services/aiPlannerService';
+import { calculateVendorMetrics, getErrorMessage } from '../../utils/plannerCalculations';
 import {
   Users,
   Plus,
@@ -28,6 +29,9 @@ export const VendorsTab: React.FC<VendorsTabProps> = ({ event, onUpdateEvent }) 
   const [rfpMessage, setRfpMessage] = useState<string | null>(null);
   const [isDraftingRfp, setIsDraftingRfp] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Vendor metrics via pure tested utility
+  const vendorMetrics = useMemo(() => calculateVendorMetrics(event.vendors), [event.vendors]);
 
   // New vendor drawer
   const [showAddVendor, setShowAddVendor] = useState(false);
@@ -145,8 +149,8 @@ export const VendorsTab: React.FC<VendorsTabProps> = ({ event, onUpdateEvent }) 
         customNotes: vendor.keyRequirements,
       });
       setRfpMessage(data.rfpMessage);
-    } catch (err: any) {
-      setRfpMessage(`Failed to generate RFP: ${err.message || 'Error'}`);
+    } catch (err: unknown) {
+      setRfpMessage(`Failed to generate RFP: ${getErrorMessage(err)}`);
     } finally {
       setIsDraftingRfp(false);
     }

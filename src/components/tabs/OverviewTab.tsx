@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { CelebrationEvent } from '../../types/planner';
+import React, { useState, useMemo, useCallback } from 'react';
+import { CelebrationEvent, BrainstormIdea } from '../../types/planner';
+import { calculateBudgetMetrics, getErrorMessage } from '../../utils/plannerCalculations';
 import {
   Sparkles,
   Palette,
@@ -30,14 +31,17 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   const [isAsking, setIsAsking] = useState(false);
 
   // Next 3 uncompleted milestones
-  const upcomingMilestones = event.timeline
-    .filter((m) => !m.completed)
-    .slice(0, 3);
+  const upcomingMilestones = useMemo(
+    () => event.timeline.filter((m) => !m.completed).slice(0, 3),
+    [event.timeline]
+  );
 
-  // Financial totals
-  const totalAllocated = event.budgetCategories.reduce((sum, c) => sum + c.targetAmount, 0);
-  const totalActual = event.budgetItems.reduce((sum, item) => sum + (item.actualCost || 0), 0);
-  const remainingBudget = event.totalBudget - totalActual;
+  // Financial totals via pure utility with memoization
+  const budgetMetrics = useMemo(
+    () => calculateBudgetMetrics(event.totalBudget, event.budgetCategories, event.budgetItems),
+    [event.totalBudget, event.budgetCategories, event.budgetItems]
+  );
+  const remainingBudget = budgetMetrics.remainingBudget;
 
   const handleQuickAsk = async (promptText: string) => {
     setIsAsking(true);
@@ -55,15 +59,15 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
       });
       const data = await res.json();
       if (data.ideas && Array.isArray(data.ideas)) {
-        const text = data.ideas
-          .map((i: any) => `• ${i.title}: ${i.description} (Pro-tip: ${i.proTip})`)
+        const text = (data.ideas as BrainstormIdea[])
+          .map((i) => `• ${i.title}: ${i.description} (Pro-tip: ${i.proTip})`)
           .join('\n\n');
         setCopilotResponse(text);
       } else {
         setCopilotResponse('No specific ideas returned. Please try rephrasing.');
       }
-    } catch (err: any) {
-      setCopilotResponse(`Could not query assistant: ${err.message || 'Error'}`);
+    } catch (err: unknown) {
+      setCopilotResponse(`Could not query assistant: ${getErrorMessage(err)}`);
     } finally {
       setIsAsking(false);
     }

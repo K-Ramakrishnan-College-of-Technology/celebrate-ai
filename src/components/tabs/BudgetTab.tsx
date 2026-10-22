@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { CelebrationEvent, BudgetItem, BudgetCategory } from '../../types/planner';
-import { calculateBudgetMetrics } from '../../utils/plannerCalculations';
+import { calculateBudgetMetrics, getErrorMessage } from '../../utils/plannerCalculations';
 import { optimizeBudgetWithAI } from '../../services/aiPlannerService';
 import {
   DollarSign,
@@ -115,8 +115,8 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ event, onUpdateEvent }) =>
         guestCount: event.guestCount,
       });
       setAuditResult(result);
-    } catch (err: any) {
-      alert(`Could not complete budget audit: ${err.message || 'Error'}`);
+    } catch (err: unknown) {
+      alert(`Could not complete budget audit: ${getErrorMessage(err)}`);
     } finally {
       setIsAuditing(false);
     }

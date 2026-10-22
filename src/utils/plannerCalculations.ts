@@ -1,4 +1,11 @@
-import { CelebrationEvent, BudgetItem, BudgetCategory, TimelineMilestone, GuestItem } from '../types/planner';
+import {
+  BudgetItem,
+  BudgetCategory,
+  TimelineMilestone,
+  GuestItem,
+  VendorItem,
+  TimelinePhase,
+} from '../types/planner';
 
 /**
  * Calculates budget summary metrics for an event.
@@ -12,10 +19,13 @@ export function calculateBudgetMetrics(
   const totalAllocated = categories.reduce((sum, c) => sum + (c.targetAmount || 0), 0);
   const totalEstimated = items.reduce((sum, i) => sum + (i.estimatedCost || 0), 0);
   const totalActual = items.reduce((sum, i) => sum + (i.actualCost ?? i.estimatedCost ?? 0), 0);
-  const totalPaid = items.filter((i) => i.paid).reduce((sum, i) => sum + (i.actualCost ?? i.estimatedCost ?? 0), 0);
+  const totalPaid = items
+    .filter((i) => i.paid)
+    .reduce((sum, i) => sum + (i.actualCost ?? i.estimatedCost ?? 0), 0);
   const remainingBudget = safeTotalBudget - totalActual;
   const isOverBudget = totalActual > safeTotalBudget;
-  const budgetUtilizationPercent = safeTotalBudget > 0 ? Math.min(100, Math.round((totalActual / safeTotalBudget) * 100)) : 0;
+  const budgetUtilizationPercent =
+    safeTotalBudget > 0 ? Math.min(100, Math.round((totalActual / safeTotalBudget) * 100)) : 0;
 
   return {
     totalBudget: safeTotalBudget,
@@ -31,13 +41,24 @@ export function calculateBudgetMetrics(
 }
 
 /**
+ * Calculates total spent for a specific category.
+ */
+export function calculateCategorySpend(category: string, items: BudgetItem[]): number {
+  if (!category || !items) return 0;
+  return items
+    .filter((i) => i.category.toLowerCase() === category.toLowerCase())
+    .reduce((sum, i) => sum + (i.actualCost ?? i.estimatedCost ?? 0), 0);
+}
+
+/**
  * Calculates timeline metrics including buffers and completion counts.
  */
 export function calculateTimelineMetrics(milestones: TimelineMilestone[]) {
-  const totalMilestones = milestones.length;
-  const completedCount = milestones.filter((m) => m.completed).length;
-  const totalBufferMinutes = milestones.reduce((sum, m) => sum + (m.bufferMinutes || 0), 0);
-  const percentComplete = totalMilestones > 0 ? Math.round((completedCount / totalMilestones) * 100) : 0;
+  const totalMilestones = milestones ? milestones.length : 0;
+  const completedCount = (milestones || []).filter((m) => m.completed).length;
+  const totalBufferMinutes = (milestones || []).reduce((sum, m) => sum + (m.bufferMinutes || 0), 0);
+  const percentComplete =
+    totalMilestones > 0 ? Math.round((completedCount / totalMilestones) * 100) : 0;
 
   return {
     totalMilestones,
@@ -49,13 +70,66 @@ export function calculateTimelineMetrics(milestones: TimelineMilestone[]) {
 }
 
 /**
+ * Filters timeline milestones by phase.
+ */
+export function filterTimelineMilestones(
+  milestones: TimelineMilestone[],
+  phase: string
+): TimelineMilestone[] {
+  if (!milestones) return [];
+  if (!phase || phase === 'All') return milestones;
+  return milestones.filter((m) => m.phase.toLowerCase() === phase.toLowerCase());
+}
+
+/**
+ * Calculates summary metrics for vendor management.
+ */
+export function calculateVendorMetrics(vendors: VendorItem[]) {
+  if (!vendors || vendors.length === 0) {
+    return {
+      totalVendors: 0,
+      bookedCount: 0,
+      depositPaidCount: 0,
+      insuranceVerifiedCount: 0,
+      totalTargetBudget: 0,
+      totalCommittedQuotes: 0,
+    };
+  }
+
+  const bookedCount = vendors.filter(
+    (v) => v.status === 'Booked' || v.status === 'Deposit Paid'
+  ).length;
+  const depositPaidCount = vendors.filter((v) => v.depositPaid).length;
+  const insuranceVerifiedCount = vendors.filter((v) => v.insuranceVerified).length;
+  const totalTargetBudget = vendors.reduce((sum, v) => sum + (v.targetBudget || 0), 0);
+  const totalCommittedQuotes = vendors.reduce(
+    (sum, v) => sum + (v.actualQuote ?? v.targetBudget ?? 0),
+    0
+  );
+
+  return {
+    totalVendors: vendors.length,
+    bookedCount,
+    depositPaidCount,
+    insuranceVerifiedCount,
+    totalTargetBudget,
+    totalCommittedQuotes,
+  };
+}
+
+/**
  * Aggregates catering dietary restriction counts from the guest list.
  */
 export function aggregateDietaryCounts(guests: GuestItem[]): Record<string, number> {
   const counts: Record<string, number> = {};
+  if (!guests) return counts;
 
   guests.forEach((g) => {
-    if (g.rsvpStatus === 'Attending' && g.dietaryRestrictions && g.dietaryRestrictions.trim().toLowerCase() !== 'none') {
+    if (
+      g.rsvpStatus === 'Attending' &&
+      g.dietaryRestrictions &&
+      g.dietaryRestrictions.trim().toLowerCase() !== 'none'
+    ) {
       const items = g.dietaryRestrictions.split(',').map((d) => d.trim());
       items.forEach((item) => {
         if (item) {
@@ -73,10 +147,12 @@ export function aggregateDietaryCounts(guests: GuestItem[]): Record<string, numb
  * Computes calendar countdown days from today to the celebration date.
  */
 export function calculateCountdownDays(targetDateStr: string, currentDate = new Date()): number {
+  if (!targetDateStr) return 0;
   const today = new Date(currentDate);
   today.setHours(0, 0, 0, 0);
 
   const target = new Date(targetDateStr);
+  if (isNaN(target.getTime())) return 0;
   target.setHours(0, 0, 0, 0);
 
   const diffTime = target.getTime() - today.getTime();
@@ -100,7 +176,7 @@ export function validatePlanInputs(params: {
   if (!params.guestCount || params.guestCount < 1 || params.guestCount > 100000) {
     errors.push('Guest count must be between 1 and 100,000.');
   }
-  if (!params.budget || params.budget < 0 || params.budget > 50000000) {
+  if (params.budget === undefined || params.budget === null || params.budget < 0 || params.budget > 50000000) {
     errors.push('Budget must be a realistic positive amount.');
   }
 
@@ -108,4 +184,20 @@ export function validatePlanInputs(params: {
     valid: errors.length === 0,
     errors,
   };
+}
+
+/**
+ * Extracts a human-readable message from any error object.
+ */
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  if (error && typeof error === 'object' && 'message' in error) {
+    return String((error as { message: unknown }).message);
+  }
+  return 'An unexpected error occurred. Please try again.';
 }

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { CelebrationEvent, PersonalizedIdea } from '../../types/planner';
+import React, { useState, useCallback } from 'react';
+import { CelebrationEvent, PersonalizedIdea, BrainstormIdea } from '../../types/planner';
 import { generateSpeechWithAI, brainstormIdeasWithAI } from '../../services/aiPlannerService';
+import { getErrorMessage } from '../../utils/plannerCalculations';
 import {
   Sparkles,
   Lightbulb,
@@ -25,7 +26,7 @@ export const IdeasTab: React.FC<IdeasTabProps> = ({ event, onUpdateEvent }) => {
   // Brainstorm state
   const [brainstormTopic, setBrainstormTopic] = useState('Signature Cocktails & Mocktails');
   const [isBrainstorming, setIsBrainstorming] = useState(false);
-  const [brainstormResults, setBrainstormResults] = useState<any[]>([]);
+  const [brainstormResults, setBrainstormResults] = useState<BrainstormIdea[]>([]);
 
   // Speech writer state
   const [speakerRole, setSpeakerRole] = useState('Best Friend / Host');
@@ -51,7 +52,7 @@ export const IdeasTab: React.FC<IdeasTabProps> = ({ event, onUpdateEvent }) => {
     'Weather & Rain Contingency Hacks',
   ];
 
-  const handleToggleSaveIdea = (id: string) => {
+  const handleToggleSaveIdea = useCallback((id: string) => {
     const updated = {
       ...event,
       ideas: event.ideas.map((i) =>
@@ -59,9 +60,9 @@ export const IdeasTab: React.FC<IdeasTabProps> = ({ event, onUpdateEvent }) => {
       ),
     };
     onUpdateEvent(updated);
-  };
+  }, [event, onUpdateEvent]);
 
-  const handleAddBrainstormIdeaToSaved = (item: any) => {
+  const handleAddBrainstormIdeaToSaved = useCallback((item: BrainstormIdea) => {
     const newIdea: PersonalizedIdea = {
       id: `i-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       category: brainstormTopic,
@@ -77,9 +78,9 @@ export const IdeasTab: React.FC<IdeasTabProps> = ({ event, onUpdateEvent }) => {
       ideas: [newIdea, ...event.ideas],
     };
     onUpdateEvent(updated);
-  };
+  }, [brainstormTopic, event, onUpdateEvent]);
 
-  const handleRunBrainstorm = async (topicToUse?: string) => {
+  const handleRunBrainstorm = useCallback(async (topicToUse?: string) => {
     const topic = topicToUse || brainstormTopic;
     setIsBrainstorming(true);
     try {
@@ -90,12 +91,12 @@ export const IdeasTab: React.FC<IdeasTabProps> = ({ event, onUpdateEvent }) => {
         guestCount: event.guestCount,
       });
       setBrainstormResults(data.ideas || []);
-    } catch (err: any) {
-      alert(`Could not brainstorm ideas: ${err.message || 'Error'}`);
+    } catch (err: unknown) {
+      alert(`Could not brainstorm ideas: ${getErrorMessage(err)}`);
     } finally {
       setIsBrainstorming(false);
     }
-  };
+  }, [brainstormTopic, event.eventType, event.vibe, event.guestCount]);
 
   const handleGenerateSpeech = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,19 +114,19 @@ export const IdeasTab: React.FC<IdeasTabProps> = ({ event, onUpdateEvent }) => {
         eventType: event.eventType,
       });
       setSpeechResult(data);
-    } catch (err: any) {
-      alert(`Could not generate speech: ${err.message || 'Error'}`);
+    } catch (err: unknown) {
+      alert(`Could not generate speech: ${getErrorMessage(err)}`);
     } finally {
       setIsGeneratingSpeech(false);
     }
   };
 
-  const handleCopySpeech = () => {
+  const handleCopySpeech = useCallback(() => {
     if (!speechResult) return;
     navigator.clipboard.writeText(speechResult.speechText);
     setCopiedSpeech(true);
     setTimeout(() => setCopiedSpeech(false), 2500);
-  };
+  }, [speechResult]);
 
   return (
     <div className="space-y-8">
