@@ -321,7 +321,19 @@ async function startServer() {
       server: { middlewareMode: true },
       appType: 'spa',
     });
+    const fs = await import('fs');
     app.use(vite.middlewares);
+    app.use('*', async (req, res, next) => {
+      const url = req.originalUrl;
+      try {
+        const rawTemplate = fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8');
+        const template = await vite.transformIndexHtml(url, rawTemplate);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+      } catch (e: any) {
+        if (vite) vite.ssrFixStacktrace(e);
+        next(e);
+      }
+    });
   } else {
     app.use(express.static(path.resolve(__dirname, 'dist')));
     app.get('*', (_req: Request, res: Response) => {
@@ -329,8 +341,9 @@ async function startServer() {
     });
   }
 
-  app.listen(port, () => {
-    console.log(`Celebration & Event Planner server listening on port ${port}`);
+  const serverPort = Number(process.env.PORT) || 3000;
+  app.listen(serverPort, '0.0.0.0', () => {
+    console.log(`Celebration & Event Planner server listening on http://0.0.0.0:${serverPort}`);
   });
 }
 
